@@ -90,11 +90,12 @@ export default function Dashboard() {
   }
 
   const sidebarItems = [
+    ...(user?.role === 'SIGNER' ? [{ key: 'signer', label: 'Signer Panel', icon: '✍️' }] : []),
     { key: 'upload', label: 'Upload Document', icon: '📄' },
     { key: 'mydocs', label: 'My Documents', icon: '📋' },
     { key: 'verify', label: 'Verify', icon: '✓' },
     { key: 'audit', label: 'Audit Logs', icon: '📜' },
-    ...(user?.role === 'SIGNER' ? [{ key: 'signer', label: 'Signer Panel', icon: '✍️' }] : []),
+    
   ]
 
   return (

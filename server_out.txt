@@ -1,0 +1,2 @@
+INFO:     127.0.0.1:64247 - "POST /login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64247 - "POST /sign/f42defcf-00f2-4846-a5c6-b5a543a7ee3c HTTP/1.1" 500 Internal Server Error

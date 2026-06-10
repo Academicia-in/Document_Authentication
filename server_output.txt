@@ -1,0 +1,6 @@
+INFO:     127.0.0.1:64242 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59661 - "GET /document/f42defcf-00f2-4846-a5c6-b5a543a7ee3c?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDaGFuY2h1Iiwicm9sZSI6IlNJR05FUiIsImV4cCI6MTc4MDYzODM1OH0.UsiLOvPTxuo6cAow3eZLJrViAyvkzadFUO4MA1YWXr4 HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:50093 - "GET /signers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59325 - "GET /user/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59325 - "GET /signer/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59325 - "GET /signer/signed HTTP/1.1" 200 OK
