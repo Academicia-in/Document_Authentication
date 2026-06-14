@@ -226,7 +226,7 @@ def admin_documents(status: str = Query(None), admin=Depends(get_admin)):
             "status": d.status,
             "current_step": d.current_step,
             "created_at": d.created_at.isoformat() if d.created_at else "",
-            "signed_pdf": d.signed_pdf_path or "",
+            "signed_pdf": f"/output/{d.id}_signed.pdf" if d.signed_pdf_path else "",
         })
     db.close()
     return result

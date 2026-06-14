@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import { BASE } from '../api'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -34,7 +35,7 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
       setError(null)
       const token = localStorage.getItem('token')
       const pdfDoc = await pdfjsLib.getDocument({
-        url: `/document/${docId}?token=${token}`,
+        url: `${BASE}/document/${docId}?token=${token}`,
       }).promise
       setPdf(pdfDoc)
       setNumPages(pdfDoc.numPages)

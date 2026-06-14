@@ -1,5 +1,7 @@
 const BASE = import.meta.env.VITE_API_URL || ''
 
+export { BASE }
+
 async function request(url, options = {}) {
   const token = localStorage.getItem('token')
   const headers = { ...options.headers }

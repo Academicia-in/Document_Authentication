@@ -5,6 +5,7 @@ import Header from '../components/Header'
 import StatusBadge from '../components/StatusBadge'
 import { toast } from '../components/Toast'
 import * as api from '../api'
+import { BASE } from '../api'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -160,7 +161,7 @@ export default function Dashboard() {
                         <td><StatusBadge status={d.status} /></td>
                         <td>
                           {d.signed_pdf ? (
-                            <a href={'/' + d.signed_pdf} target="_blank" rel="noreferrer" className="btn-success btn-sm" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                            <a href={BASE + d.signed_pdf} target="_blank" rel="noreferrer" className="btn-success btn-sm" style={{ textDecoration: 'none', display: 'inline-block' }}>
                               Download
                             </a>
                           ) : (
@@ -269,7 +270,7 @@ export default function Dashboard() {
                         <tr key={d.id}>
                           <td><span className="truncate">{d.id}</span><button className="copy-btn" onClick={() => copyId(d.id)}>Copy</button></td>
                           <td>
-                            <a href={'/' + d.signed_pdf} target="_blank" rel="noreferrer" className="btn-success btn-sm" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                            <a href={BASE + d.signed_pdf} target="_blank" rel="noreferrer" className="btn-success btn-sm" style={{ textDecoration: 'none', display: 'inline-block' }}>
                               Download PDF
                             </a>
                           </td>

@@ -296,7 +296,7 @@ def user_documents(current_user: User = Depends(get_current_user)):
             "id": d.id,
             "signer": signer.username if signer else "Unknown",
             "status": d.status,
-            "signed_pdf": d.signed_pdf_path
+            "signed_pdf": f"/output/{d.id}_signed.pdf" if d.signed_pdf_path else None
         })
     db.close()
     return result
@@ -327,7 +327,7 @@ def signer_signed_docs(current_user: User = Depends(get_current_user)):
     for d in docs:
         result.append({
             "id": d.id,
-            "signed_pdf": d.signed_pdf_path
+            "signed_pdf": f"/output/{d.id}_signed.pdf" if d.signed_pdf_path else None
         })
     db.close()
     return result
