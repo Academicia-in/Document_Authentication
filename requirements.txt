@@ -1,0 +1,15 @@
+fastapi==0.129.0
+uvicorn[standard]==0.40.0
+sqlalchemy==2.0.46
+psycopg2-binary==2.9.10
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-jose==3.5.0
+cryptography==46.0.5
+pypdf==5.1.0
+reportlab==4.4.10
+qrcode[pil]==8.2
+pillow==12.1.1
+python-multipart==0.0.22
+pycryptodome==3.23.0
+python-dotenv==1.1.1
