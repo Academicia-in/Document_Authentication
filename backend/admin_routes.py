@@ -231,6 +231,19 @@ def admin_documents(status: str = Query(None), admin=Depends(get_admin)):
     db.close()
     return result
 
+@router.delete("/documents/{doc_id}")
+def admin_delete_document(doc_id: str, admin=Depends(get_admin)):
+    db = SessionLocal()
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        db.close()
+        raise HTTPException(status_code=404, detail="Document not found")
+    db.query(AuditLog).filter(AuditLog.document_id == doc_id).delete()
+    db.delete(doc)
+    db.commit()
+    db.close()
+    return {"message": "Document deleted successfully"}
+
 # ─── ACTIVITY LOGS ──────────────────────────────────────
 @router.get("/activity-logs")
 def admin_activity_logs(admin=Depends(get_admin)):

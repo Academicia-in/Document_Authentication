@@ -48,6 +48,17 @@ export default function AdminDashboard() {
     try { const l = await api.adminGetActivityLogs(); setActivityLogs(l) } catch {}
   }, [])
 
+  async function deleteDocument(docId) {
+    if (!confirm('Delete this document permanently?')) return
+    try {
+      await api.adminDeleteDocument(docId)
+      toast('Document deleted', 'success')
+      setAdminDocs(prev => prev.filter(d => d.id !== docId))
+    } catch (err) {
+      toast(err.message || 'Delete failed', 'error')
+    }
+  }
+
   useEffect(() => { loadDashboard() }, [loadDashboard])
   useEffect(() => { if (section === 'students') loadStudents() }, [section, loadStudents])
   useEffect(() => { if (section === 'signers') loadSigners() }, [section, loadSigners])
@@ -321,7 +332,7 @@ export default function AdminDashboard() {
               {adminDocs.length === 0 ? <div className="empty-state">No documents found</div> : (
                 <div style={{ overflowX: 'auto' }}>
                   <table className="glass-table">
-                    <thead><tr><th>Student</th><th>Document Type</th><th>Status</th><th>Uploaded</th><th>Download</th></tr></thead>
+                    <thead><tr><th>Student</th><th>Document Type</th><th>Status</th><th>Uploaded</th><th>Download</th><th>Delete</th></tr></thead>
                     <tbody>
                       {adminDocs.map(d => (
                         <tr key={d.id}>
@@ -340,6 +351,9 @@ export default function AdminDashboard() {
                             ) : (
                               <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>-</span>
                             )}
+                          </td>
+                          <td>
+                            <button className="btn-danger btn-sm" onClick={() => deleteDocument(d.id)} style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer' }}>Delete</button>
                           </td>
                         </tr>
                       ))}

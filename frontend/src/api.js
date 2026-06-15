@@ -189,6 +189,10 @@ export function adminGetDocuments(status) {
   return request(url)
 }
 
+export function adminDeleteDocument(docId) {
+  return request('/admin/documents/' + docId, { method: 'DELETE' })
+}
+
 export function adminGetActivityLogs() {
   return request('/admin/activity-logs')
 }
