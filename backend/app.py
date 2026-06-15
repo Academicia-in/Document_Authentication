@@ -14,6 +14,7 @@ import os
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from jose import jwt, JWTError
 
 import qrcode
 from reportlab.pdfgen import canvas
@@ -78,7 +79,7 @@ async def serve_viewer(doc_id: str):
 async def serve_admin():
     return FileResponse(os.path.join(REACT_DIST, "index.html"))
 
-from backend.auth_utils import hash_password, verify_password, create_access_token, get_current_user
+from backend.auth_utils import hash_password, verify_password, create_access_token, get_current_user, SECRET_KEY, ALGORITHM
 
 def hash_file(filepath):
     digest = hashes.Hash(hashes.SHA256())
@@ -308,13 +309,37 @@ def user_documents(current_user: User = Depends(get_current_user)):
     return result
 
 @app.get("/document/{doc_id}")
-def view_document(doc_id: str, current_user: User = Depends(get_current_user)):
+def view_document(doc_id: str, request: Request, token: str = Query(None)):
     db = SessionLocal()
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
+        db.close()
         raise HTTPException(status_code=404)
-    if doc.uploaded_by != current_user.id and doc.signer_id != current_user.id:
+    user = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            payload = jwt.decode(auth_header[7:], SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            if username:
+                user = db.query(User).filter(User.username == username).first()
+        except JWTError:
+            pass
+    if not user and token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            if username:
+                user = db.query(User).filter(User.username == username).first()
+        except JWTError:
+            pass
+    if not user:
+        db.close()
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if doc.uploaded_by != user.id and doc.signer_id != user.id:
+        db.close()
         raise HTTPException(status_code=403)
+    db.close()
     return FileResponse(doc.file_path, media_type="application/pdf")
 
 @app.get("/signer/signed")

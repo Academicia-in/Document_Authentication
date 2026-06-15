@@ -5,8 +5,7 @@ node_modules/
 dist/
 frontend/dist/
 frontend/node_modules/
-backend/documents/
-backend/output/
+
 *.bin
 *.png
 *.db

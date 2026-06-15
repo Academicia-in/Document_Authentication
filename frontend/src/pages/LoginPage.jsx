@@ -41,10 +41,10 @@ export default function LoginPage() {
             {loading ? <span className="spinner" /> : 'Login'}
           </button>
         </form>
-        {/* <div style={{ textAlign: 'center', marginTop: 20 }}>
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
           <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>Don't have  account? </span>
           <button className="auth-link" onClick={() => navigate('/register')}>Register</button>
-        </div> */}
+        </div>
       </div>
     </div>
   )
