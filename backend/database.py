@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, Column, String, DateTime, Integer, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:123@localhost:5432/academicia_docs")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://neondb_owner:npg_8Dli6MdPVspm@ep-patient-block-aoolxm39-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require")
 
 engine = create_engine(DATABASE_URL)
 
