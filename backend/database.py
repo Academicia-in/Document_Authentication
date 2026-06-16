@@ -28,6 +28,7 @@ class Document(Base):
 
     id = Column(String, primary_key=True, index=True)
     file_path = Column(String)
+    document_name = Column(String, nullable=True)
     uploaded_by = Column(String)
     signer_id = Column(String, nullable=True)
     document_type_id = Column(String, nullable=True)
@@ -36,6 +37,7 @@ class Document(Base):
     status = Column(String, default="PENDING")
     rejection_reason = Column(Text, nullable=True)
     current_step = Column(Integer, default=0)
+    verification_id = Column(String, nullable=True, unique=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class DocumentType(Base):

@@ -32,6 +32,29 @@ REACT_ASSETS = os.path.join(REACT_DIST, "assets")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
+# ─── DB Migration: add missing columns to existing tables ───
+def run_migrations():
+    import sqlalchemy as sa
+    from sqlalchemy import inspect
+    try:
+        db = SessionLocal()
+        inspector = inspect(db.bind)
+        cols = [c["name"] for c in inspector.get_columns("documents")]
+        if "document_name" not in cols:
+            db.execute(sa.text("ALTER TABLE documents ADD COLUMN document_name VARCHAR"))
+        if "verification_id" not in cols:
+            db.execute(sa.text("ALTER TABLE documents ADD COLUMN verification_id VARCHAR"))
+            db.execute(sa.text("CREATE UNIQUE INDEX IF NOT EXISTS ix_documents_verification_id ON documents (verification_id)"))
+        db.commit()
+        db.close()
+    except Exception:
+        pass
+
+try:
+    run_migrations()
+except Exception:
+    pass
+
 cors_origins = [
     origin.strip()
     for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://127.0.0.1:3000,http://127.0.0.1:3001,http://127.0.0.1:3002").split(",")
@@ -142,12 +165,15 @@ async def upload_document(file: UploadFile = File(...),signer_id: str = Form(...
     file_location = f"{UPLOAD_FOLDER}/{doc_id}.pdf"
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+    original_name = file.filename or f"{doc_id}.pdf"
     db = SessionLocal()
     new_doc = Document(
     id=doc_id,
     file_path=file_location,
+    document_name=original_name,
     uploaded_by=current_user.id,
     signer_id=signer_id,
+    verification_id=str(uuid.uuid4()),
     status="PENDING"
 )
     db.add(new_doc)
@@ -172,10 +198,12 @@ def sign_document(doc_id: str, qr_x: int = Form(450), qr_y: int = Form(700),
             db.close()
             raise HTTPException(status_code=404, detail="Document not found")
         if doc.status == "SIGNED":
+            if not doc.verification_id:
+                doc.verification_id = str(uuid.uuid4())
             base_url = os.getenv("VERIFICATION_BASE_URL", "https://ad-backend-9z8v.onrender.com")
             if "ad-backend.onrender.com" in base_url and "ad-backend-9z8v" not in base_url:
                 base_url = "https://ad-backend-9z8v.onrender.com"
-            verification_link = f"{base_url}/verify/{doc_id}"
+            verification_link = f"{base_url}/verify/{doc.verification_id}"
             qr_code = qrcode.QRCode(box_size=10, border=2)
             qr_code.add_data(verification_link)
             qr_code.make(fit=True)
@@ -228,11 +256,13 @@ def sign_document(doc_id: str, qr_x: int = Form(450), qr_y: int = Form(700),
             f.write(signature)
         doc.signature_path = signature_path
         doc.status = "SIGNED"
+        if not doc.verification_id:
+            doc.verification_id = str(uuid.uuid4())
         log_action(doc_id, "SIGN", current_user.username)
         base_url = os.getenv("VERIFICATION_BASE_URL", "https://ad-backend-9z8v.onrender.com")
         if "ad-backend.onrender.com" in base_url and "ad-backend-9z8v" not in base_url:
             base_url = "https://ad-backend-9z8v.onrender.com"
-        verification_link = f"{base_url}/verify/{doc_id}"
+        verification_link = f"{base_url}/verify/{doc.verification_id}"
         qr_code = qrcode.QRCode(box_size=10, border=2)
         qr_code.add_data(verification_link)
         qr_code.make(fit=True)
@@ -277,26 +307,37 @@ def get_audit_logs(doc_id: str):
     db.close()
     return logs
 
-@app.get("/api/verify/{doc_id}")
-def verify_document_api(doc_id: str):
+@app.get("/api/verify/{verification_id}")
+def verify_document_api(verification_id: str):
     db = SessionLocal()
-    doc = db.query(Document).filter(Document.id == doc_id).first()
+    doc = db.query(Document).filter(
+        (Document.verification_id == verification_id) | (Document.id == verification_id)
+    ).first()
     if not doc:
         db.close()
         return {"status": "INVALID", "message": "Document not found"}
     uploader = db.query(User).filter(User.id == doc.uploaded_by).first()
     signer = db.query(User).filter(User.id == doc.signer_id).first() if doc.signer_id else None
+    sign_log = db.query(AuditLog).filter(
+        AuditLog.document_id == doc.id, AuditLog.action == "SIGN"
+    ).order_by(AuditLog.timestamp.desc()).first()
+    signed_at = sign_log.timestamp.isoformat() if sign_log else None
     result = {
         "status": "VALID" if doc.status == "SIGNED" else doc.status,
+        "verification_id": doc.verification_id or doc.id,
         "document_id": doc.id,
+        "document_name": doc.document_name or "Untitled",
         "document_type": None,
         "uploaded_by": uploader.username if uploader else "Unknown",
         "uploader_name": uploader.full_name if uploader and uploader.full_name else uploader.username if uploader else "Unknown",
+        "enrollment_number": uploader.username if uploader else "",
+        "department": uploader.department if uploader else "",
         "signer_name": signer.full_name if signer and signer.full_name else signer.username if signer else None,
         "uploaded_at": doc.created_at.isoformat() if doc.created_at else None,
-        "signed_at": doc.created_at.isoformat() if doc.status == "SIGNED" and doc.created_at else None,
+        "signed_at": signed_at or (doc.created_at.isoformat() if doc.created_at else None),
         "rejection_reason": doc.rejection_reason,
         "has_signed_pdf": bool(doc.signed_pdf_path),
+        "approved_by": signer.full_name if signer and signer.full_name else signer.username if signer else None,
         "message": f"Document is verified and signed by {signer.full_name or signer.username}" if doc.status == "SIGNED" and signer else "Document is not yet signed" if doc.status != "SIGNED" else "Signer not found"
     }
     db.close()
