@@ -13,3 +13,4 @@ pillow==12.1.1
 python-multipart==0.0.22
 pycryptodome==3.23.0
 python-dotenv==1.1.1
+mangum==0.17.0
