@@ -202,7 +202,7 @@ def sign_document(doc_id: str, qr_x: int = Form(450), qr_y: int = Form(700),
         if doc.status == "SIGNED":
             if not doc.verification_id:
                 doc.verification_id = str(uuid.uuid4())
-            base_url = os.getenv("VERIFICATION_BASE_URL") or "https://document-authentication-1.onrender.com"
+            base_url = os.getenv("VERIFICATION_BASE_URL") or "https://academics-docs-f.netlify.app"
             verification_path = os.getenv("VERIFICATION_PATH") or "verify"
             verification_link = f"{base_url}/{verification_path}/{doc.verification_id}"
             qr_code = qrcode.QRCode(box_size=10, border=2)
@@ -260,7 +260,7 @@ def sign_document(doc_id: str, qr_x: int = Form(450), qr_y: int = Form(700),
         if not doc.verification_id:
             doc.verification_id = str(uuid.uuid4())
         log_action(doc_id, "SIGN", current_user.username)
-        base_url = os.getenv("VERIFICATION_BASE_URL") or "https://document-authentication-1.onrender.com"
+        base_url = os.getenv("VERIFICATION_BASE_URL") or "https://academics-docs-f.netlify.app"
         verification_path = os.getenv("VERIFICATION_PATH") or "verify"
         verification_link = f"{base_url}/{verification_path}/{doc.verification_id}"
         qr_code = qrcode.QRCode(box_size=10, border=2)
