@@ -205,15 +205,15 @@ def sign_document(doc_id: str, qr_x: int = Form(450), qr_y: int = Form(700),
         if doc.status == "SIGNED":
             if not doc.verification_id:
                 doc.verification_id = str(uuid.uuid4())
-        base_url = os.getenv("VERIFICATION_BASE_URL") or "https://document-authentication-1.onrender.com"
-        verification_path = os.getenv("VERIFICATION_PATH") or "verify"
-        verification_link = f"{base_url}/{verification_path}/{doc.verification_id}"
-        qr_code = qrcode.QRCode(box_size=10, border=2)
-        qr_code.add_data(verification_link)
-        qr_code.make(fit=True)
-        qr_img = qr_code.make_image(fill_color="black", back_color="white").convert('RGB')
-        qr_path = os.path.join(OUTPUT_FOLDER, f"{doc_id}_qr.png")
-        qr_img.save(qr_path)
+            base_url = os.getenv("VERIFICATION_BASE_URL") or "https://document-authentication-1.onrender.com"
+            verification_path = os.getenv("VERIFICATION_PATH") or "verify"
+            verification_link = f"{base_url}/{verification_path}/{doc.verification_id}"
+            qr_code = qrcode.QRCode(box_size=10, border=2)
+            qr_code.add_data(verification_link)
+            qr_code.make(fit=True)
+            qr_img = qr_code.make_image(fill_color="black", back_color="white").convert('RGB')
+            qr_path = os.path.join(OUTPUT_FOLDER, f"{doc_id}_qr.png")
+            qr_img.save(qr_path)
             reader = PdfReader(doc.file_path)
             writer = PdfWriter()
             for i, pg in enumerate(reader.pages):
