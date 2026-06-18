@@ -63,7 +63,7 @@ export function signDocument(docId, qr_x = 450, qr_y = 700, qr_page = 0) {
   }).then(r => { if (!r.ok) throw new Error('Signing failed'); return r.json() })
 }
 
-async function fetchWithRetry(url, retries = 5, delay = 3000) {
+async function fetchWithRetry(url, retries = 10, delay = 3000) {
   for (let i = 0; i < retries; i++) {
     try {
       const res = await fetch(url)
