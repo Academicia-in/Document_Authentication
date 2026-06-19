@@ -337,6 +337,7 @@ def verify_document_api(verification_id: str):
         "signed_at": signed_at or (doc.created_at.isoformat() + "Z" if doc.created_at else None),
         "rejection_reason": doc.rejection_reason,
         "has_signed_pdf": bool(doc.signed_pdf_path),
+        "signed_pdf_url": f"/output/{doc.id}_signed.pdf" if doc.signed_pdf_path else None,
         "approved_by": signer.full_name if signer and signer.full_name else signer.username if signer else None,
         "message": f"Document is verified and signed by {signer.full_name or signer.username}" if doc.status == "SIGNED" and signer else "Document is not yet signed" if doc.status != "SIGNED" else "Signer not found"
     }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { verifyDocument } from '../api'
+import { verifyDocument, BASE } from '../api'
 
 export default function VerificationPage() {
   const { docId } = useParams()
@@ -80,6 +80,26 @@ export default function VerificationPage() {
           {data?.document_id && <Row label="Document ID" value={<code style={{ fontSize: 12, opacity: 0.6 }}>{data.document_id}</code>} />}
           {data?.verification_id && <Row label="Verification ID" value={<code style={{ fontSize: 12, opacity: 0.6 }}>{data.verification_id}</code>} />}
         </div>
+
+        {data?.signed_pdf_url && (
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <button
+              onClick={() => window.open(BASE + data.signed_pdf_url, '_blank')}
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                color: '#fff',
+                padding: '12px 32px',
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              View Signed Document
+            </button>
+          </div>
+        )}
 
         <div style={{ textAlign: 'center' }}>
           <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11 }}>
