@@ -16,3 +16,11 @@ frontend/node_modules/
 
 err_*.txt
 server_err*.txt
+
+# Backend generated files
+backend/documents/
+backend/output/
+backend/*.pem
+
+# Frontend build output
+frontend/dist/

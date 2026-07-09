@@ -1,20 +1,17 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import * as pdfjsLib from 'pdfjs-dist'
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import { useState, useRef } from 'react'
+import { Document, Page, pdfjs } from 'react-pdf'
 import { BASE } from '../api'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 const QR_SIZE = 100
 
 export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
-  const [pdf, setPdf] = useState(null)
   const [numPages, setNumPages] = useState(0)
   const [pageNum, setPageNum] = useState(1)
   const [zoom, setZoom] = useState(1)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [pageH, setPageH] = useState(792)
+  const [pageHeight, setPageHeight] = useState(792)
 
   const [placingQr, setPlacingQr] = useState(false)
   const [qrX, setQrX] = useState(200)
@@ -24,64 +21,26 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
   const [dragOffY, setDragOffY] = useState(0)
   const [qrPage, setQrPage] = useState(1)
 
-  const canvasRef = useRef(null)
   const containerRef = useRef(null)
+  const pageWrapRef = useRef(null)
   const qrRef = useRef(null)
-  const renderTaskRef = useRef(null)
 
-  const loadPdf = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const token = localStorage.getItem('token')
-      const pdfDoc = await pdfjsLib.getDocument({
-        url: `${BASE}/document/${docId}`,
-        httpHeaders: { 'Authorization': `Bearer ${token}` },
-        withCredentials: true,
-      }).promise
-      setPdf(pdfDoc)
-      setNumPages(pdfDoc.numPages)
-      const p = await pdfDoc.getPage(1)
-      const vp = p.getViewport({ scale: 1 })
-      setPageH(vp.height)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [docId])
+  const token = localStorage.getItem('token')
 
-  useEffect(() => { loadPdf() }, [loadPdf])
+  const fileWithAuth = {
+    url: `${BASE}/document/${docId}`,
+    httpHeaders: token ? { 'Authorization': `Bearer ${token}` } : {},
+    withCredentials: true,
+  }
 
-  useEffect(() => {
-    if (!pdf || !canvasRef.current) return
-    let cancelled = false
-    const render = async () => {
-      if (renderTaskRef.current) {
-        try { await renderTaskRef.current.cancel() } catch {}
-      }
-      const page = await pdf.getPage(pageNum)
-      const vp = page.getViewport({ scale: zoom })
-      const canvas = canvasRef.current
-      canvas.width = vp.width
-      canvas.height = vp.height
-      const ctx = canvas.getContext('2d')
-      const task = page.render({ canvasContext: ctx, viewport: vp })
-      renderTaskRef.current = task
-      await task.promise
-      if (!cancelled) renderTaskRef.current = null
-    }
-    render().catch(err => {
-      if (err.name !== 'RenderingCancelledException' && !cancelled) {
-        setError(err.message)
-      }
-    })
-    return () => { cancelled = true }
-  }, [pdf, pageNum, zoom, loading])
+  function onDocLoad({ numPages }) {
+    setNumPages(numPages)
+  }
 
-  useEffect(() => {
-    return () => { if (renderTaskRef.current) renderTaskRef.current.cancel() }
-  }, [])
+  function onPageLoad(page) {
+    const vp = page.getViewport({ scale: 1 })
+    setPageHeight(vp.height)
+  }
 
   const zoomIn = () => setZoom(z => Math.min(z + 0.25, 3))
   const zoomOut = () => setZoom(z => Math.max(z - 0.25, 0.25))
@@ -104,19 +63,19 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
     setQrDragging(true)
   }
 
-  const onContainerMouseMove = (e) => {
+  const onWrapMouseMove = (e) => {
     if (!qrDragging || !placingQr) return
-    const cavRect = canvasRef.current?.getBoundingClientRect()
-    if (!cavRect) return
-    const newX = e.clientX - cavRect.left - dragOffX
-    const newY = e.clientY - cavRect.top - dragOffY
+    const wrapRect = pageWrapRef.current?.getBoundingClientRect()
+    if (!wrapRect) return
+    const newX = e.clientX - wrapRect.left - dragOffX
+    const newY = e.clientY - wrapRect.top - dragOffY
     const sz = QR_SIZE * zoom
-    setQrX(Math.max(0, Math.min(newX, cavRect.width - sz)))
-    setQrY(Math.max(0, Math.min(newY, cavRect.height - sz)))
+    setQrX(Math.max(0, Math.min(newX, wrapRect.width - sz)))
+    setQrY(Math.max(0, Math.min(newY, wrapRect.height - sz)))
   }
 
-  const onContainerMouseUp = () => setQrDragging(false)
-  const onContainerMouseLeave = () => setQrDragging(false)
+  const onWrapMouseUp = () => setQrDragging(false)
+  const onWrapMouseLeave = () => setQrDragging(false)
 
   const resetQr = () => {
     setQrX(200)
@@ -125,7 +84,7 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
 
   const confirmSign = () => {
     const pdfX = Math.round(qrX / zoom)
-    const pdfY = Math.round(pageH - (qrY / zoom) - QR_SIZE)
+    const pdfY = Math.round(pageHeight - (qrY / zoom) - QR_SIZE)
     onSign({
       qr_x: Math.max(0, pdfX),
       qr_y: Math.max(0, pdfY),
@@ -136,7 +95,11 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
   const qrScreenSize = QR_SIZE * zoom
 
   if (error) {
-    return <div className="glass-strong" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF6584' }}>Error: {error}</div>
+    return (
+      <div className="glass-strong" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF6584' }}>
+        Error: {error}
+      </div>
+    )
   }
 
   return (
@@ -168,7 +131,7 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
               </button>
             ) : (
               <>
-                <span style={{ color: '#FFC107', fontSize: 11 }}>QR: ({Math.round(qrX / zoom)}, {Math.round(pageH - qrY / zoom - QR_SIZE)})</span>
+                <span style={{ color: '#FFC107', fontSize: 11 }}>QR: ({Math.round(qrX / zoom)}, {Math.round(pageHeight - qrY / zoom - QR_SIZE)})</span>
                 <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>on pg</span>
                 <input type="number" value={qrPage} min={1} max={numPages}
                   onChange={e => { const v = parseInt(e.target.value); if (v >= 1 && v <= numPages) setQrPage(v) }}
@@ -185,17 +148,27 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
       </div>
 
       <div ref={containerRef}
-        onMouseMove={onContainerMouseMove}
-        onMouseUp={onContainerMouseUp}
-        onMouseLeave={onContainerMouseLeave}
+        onMouseMove={onWrapMouseMove}
+        onMouseUp={onWrapMouseUp}
+        onMouseLeave={onWrapMouseLeave}
         style={{ flex: 1, overflow: 'auto', position: 'relative', cursor: placingQr ? 'crosshair' : 'default', background: 'rgba(0,0,0,0.3)', display: 'flex', justifyContent: 'center', padding: 12 }}>
-        {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-            <div className="spinner" style={{ width: 32, height: 32 }} />
-          </div>
-        ) : (
-          <div style={{ position: 'relative', display: 'inline-block', alignSelf: 'flex-start' }}>
-            <canvas ref={canvasRef} style={{ display: 'block', maxWidth: '100%' }} />
+        <Document
+          file={fileWithAuth}
+          onLoadSuccess={onDocLoad}
+          onLoadError={err => setError(err.message)}
+          loading={
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+              <div className="spinner" style={{ width: 32, height: 32 }} />
+            </div>
+          }>
+          <div ref={pageWrapRef} style={{ position: 'relative', display: 'inline-block' }}>
+            <Page
+              pageNumber={pageNum}
+              scale={zoom}
+              onLoadSuccess={onPageLoad}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+            />
             {placingQr && (
               <div ref={qrRef}
                 onMouseDown={onQrMouseDown}
@@ -215,7 +188,7 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
               </div>
             )}
           </div>
-        )}
+        </Document>
       </div>
     </div>
   )
