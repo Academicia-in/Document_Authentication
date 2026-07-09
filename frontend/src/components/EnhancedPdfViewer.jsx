@@ -4,8 +4,6 @@ import { BASE } from '../api'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
-const QR_SIZE = 100
-
 export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
   const [numPages, setNumPages] = useState(0)
   const [pageNum, setPageNum] = useState(1)
@@ -20,6 +18,7 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
   const [dragOffX, setDragOffX] = useState(0)
   const [dragOffY, setDragOffY] = useState(0)
   const [qrPage, setQrPage] = useState(1)
+  const [qrSize, setQrSize] = useState(100)
 
   const containerRef = useRef(null)
   const pageWrapRef = useRef(null)
@@ -52,29 +51,44 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
     }
   }
 
-  const onQrMouseDown = (e) => {
+  const getClientXY = (e) => {
+    if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    return { x: e.clientX, y: e.clientY }
+  }
+
+  const startDrag = (e) => {
     if (!placingQr) return
     e.preventDefault()
     e.stopPropagation()
+    const { x, y } = getClientXY(e)
     const rect = qrRef.current.getBoundingClientRect()
-    setDragOffX(e.clientX - rect.left)
-    setDragOffY(e.clientY - rect.top)
+    setDragOffX(x - rect.left)
+    setDragOffY(y - rect.top)
     setQrDragging(true)
   }
 
-  const onWrapMouseMove = (e) => {
+  const onQrMouseDown = startDrag
+  const onQrTouchStart = startDrag
+
+  const moveDrag = (e) => {
     if (!qrDragging || !placingQr) return
     const wrapRect = pageWrapRef.current?.getBoundingClientRect()
     if (!wrapRect) return
-    const newX = e.clientX - wrapRect.left - dragOffX
-    const newY = e.clientY - wrapRect.top - dragOffY
-    const sz = QR_SIZE * zoom
+    const { x, y } = getClientXY(e)
+    const newX = x - wrapRect.left - dragOffX
+    const newY = y - wrapRect.top - dragOffY
+    const sz = qrSize * zoom
     setQrX(Math.max(0, Math.min(newX, wrapRect.width - sz)))
     setQrY(Math.max(0, Math.min(newY, wrapRect.height - sz)))
   }
 
-  const onWrapMouseUp = () => setQrDragging(false)
-  const onWrapMouseLeave = () => setQrDragging(false)
+  const onWrapMouseMove = moveDrag
+  const onWrapTouchMove = moveDrag
+
+  const endDrag = () => setQrDragging(false)
+  const onWrapMouseUp = endDrag
+  const onWrapMouseLeave = endDrag
+  const onWrapTouchEnd = endDrag
 
   const resetQr = () => {
     setQrX(200)
@@ -83,15 +97,16 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
 
   const confirmSign = () => {
     const pdfX = Math.round(qrX / zoom)
-    const pdfY = Math.round(pageHeight - (qrY / zoom) - QR_SIZE)
+    const pdfY = Math.round(pageHeight - (qrY / zoom) - qrSize)
     onSign({
       qr_x: Math.max(0, pdfX),
       qr_y: Math.max(0, pdfY),
       qr_page: qrPage - 1,
+      qr_size: qrSize,
     })
   }
 
-  const qrScreenSize = QR_SIZE * zoom
+  const qrScreenSize = qrSize * zoom
 
   if (error) {
     return (
@@ -130,8 +145,13 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
               </button>
             ) : (
               <>
-                <span style={{ color: '#FFC107', fontSize: 11 }}>QR: ({Math.round(qrX / zoom)}, {Math.round(pageHeight - qrY / zoom - QR_SIZE)})</span>
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>on pg</span>
+                <span style={{ color: '#FFC107', fontSize: 11 }}>QR: ({Math.round(qrX / zoom)}, {Math.round(pageHeight - qrY / zoom - qrSize)})</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>size</span>
+                <input type="range" min={50} max={200} value={qrSize}
+                  onChange={e => setQrSize(Number(e.target.value))}
+                  style={{ width: 80, accentColor: '#FFC107' }} />
+                <span style={{ color: '#FFC107', fontSize: 11, minWidth: 30 }}>{qrSize}px</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>pg</span>
                 <input type="number" value={qrPage} min={1} max={numPages}
                   onChange={e => { const v = parseInt(e.target.value); if (v >= 1 && v <= numPages) setQrPage(v) }}
                   style={{ width: 40, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,201,7,0.3)', borderRadius: 4, color: '#FFC107', textAlign: 'center', padding: '2px 4px', fontSize: 12 }} />
@@ -150,7 +170,9 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
         onMouseMove={onWrapMouseMove}
         onMouseUp={onWrapMouseUp}
         onMouseLeave={onWrapMouseLeave}
-        style={{ flex: 1, overflow: 'auto', position: 'relative', cursor: placingQr ? 'crosshair' : 'default', background: 'rgba(0,0,0,0.3)', display: 'flex', justifyContent: 'center', padding: 12 }}>
+        onTouchMove={onWrapTouchMove}
+        onTouchEnd={onWrapTouchEnd}
+        style={{ flex: 1, overflow: 'auto', position: 'relative', cursor: placingQr ? 'crosshair' : 'default', background: 'rgba(0,0,0,0.3)', display: 'flex', justifyContent: 'center', padding: 12, touchAction: placingQr ? 'none' : 'auto' }}>
         <Document
           file={fileWithAuth}
           onLoadSuccess={onDocLoad}
@@ -171,6 +193,7 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
             {placingQr && (
               <div ref={qrRef}
                 onMouseDown={onQrMouseDown}
+                onTouchStart={onQrTouchStart}
                 style={{
                   position: 'absolute', left: qrX, top: qrY,
                   width: qrScreenSize, height: qrScreenSize,

@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext'
 import { ToastContainer } from './components/Toast'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import Dashboard from './pages/Dashboard'
 import ViewerPage from './pages/ViewerPage'
 import VerificationPage from './pages/VerificationPage'
@@ -22,6 +23,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/viewer/:docId" element={<ProtectedRoute><ViewerPage /></ProtectedRoute>} />
         <Route path="/verify/:docId" element={<VerificationPage />} />

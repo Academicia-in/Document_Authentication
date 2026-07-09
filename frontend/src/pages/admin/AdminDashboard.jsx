@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [activityLogs, setActivityLogs] = useState([])
   const [loading, setLoading] = useState({})
   const [modal, setModal] = useState(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const loadDashboard = useCallback(async () => {
     try { const s = await api.adminGetDashboard(); setStats(s) } catch {}
@@ -139,13 +140,16 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="layout">
+    <div className={`layout ${sidebarOpen ? 'sidebar-open' : ''}`}>
+      <button className="sidebar-toggle" onClick={() => setSidebarOpen(o => !o)}>
+        <span>{sidebarOpen ? '✕' : '☰'}</span> Menu
+      </button>
       <div className="sidebar">
         <div className="sidebar-logo">✦ Admin Panel</div>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', padding: '0 16px', marginBottom: 16 }}>{user?.username}</div>
         {sidebarItems.map(item => (
           <button key={item.key} className={`sidebar-item ${section === item.key ? 'active' : ''}`}
-            onClick={() => setSection(item.key)}>
+            onClick={() => { setSection(item.key); setSidebarOpen(false) }}>
             <span>{item.icon}</span> {item.label}
           </button>
         ))}

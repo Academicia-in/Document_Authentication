@@ -40,6 +40,9 @@ export default function LoginPage() {
           <button className="btn-primary" type="submit" disabled={loading} style={{ opacity: loading ? 0.7 : 1 }}>
             {loading ? <span className="spinner" /> : 'Login'}
           </button>
+          <div style={{ textAlign: 'right' }}>
+            <button className="auth-link" type="button" onClick={() => navigate('/forgot-password')} style={{ fontSize: 13 }}>Forgot Password?</button>
+          </div>
         </form>
         <div style={{ textAlign: 'center', marginTop: 20 }}>
           <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>Don't have  account? </span>

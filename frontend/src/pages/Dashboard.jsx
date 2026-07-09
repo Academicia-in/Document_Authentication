@@ -11,6 +11,7 @@ export default function Dashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('upload')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [signers, setSigners] = useState([])
   const [userDocs, setUserDocs] = useState([])
   const [signerPending, setSignerPending] = useState([])
@@ -100,12 +101,15 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="layout">
+    <div className={`layout ${sidebarOpen ? 'sidebar-open' : ''}`}>
+      <button className="sidebar-toggle" onClick={() => setSidebarOpen(o => !o)}>
+        <span>{sidebarOpen ? '✕' : '☰'}</span> Menu
+      </button>
       <div className="sidebar">
         <div className="sidebar-logo">✦ Academicia</div>
         {sidebarItems.map(item => (
           <button key={item.key} className={`sidebar-item ${activeSection === item.key ? 'active' : ''}`}
-            onClick={() => setActiveSection(item.key)}>
+            onClick={() => { setActiveSection(item.key); setSidebarOpen(false) }}>
             <span>{item.icon}</span> {item.label}
           </button>
         ))}

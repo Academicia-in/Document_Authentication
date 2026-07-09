@@ -28,8 +28,8 @@ export function AuthProvider({ children }) {
     })
   }
 
-  function register(username, password, role) {
-    return apiRegister(username, password, role)
+  function register(username, password, role, email) {
+    return apiRegister(username, password, role, email)
   }
 
   function logout() {

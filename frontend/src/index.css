@@ -624,20 +624,174 @@ body::before {
   font-size: 14px;
 }
 
+/* Sidebar toggle (mobile) */
+.sidebar-toggle {
+  display: none;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #fff;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 18px;
+  margin-bottom: 12px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+}
+
+.sidebar-open .sidebar {
+  display: flex !important;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
+  .sidebar-toggle {
+    display: flex;
+  }
+
   .sidebar {
     width: 100%;
     height: auto;
     position: relative;
     padding: 16px;
+    display: none;
   }
+
   .main-content {
     margin-left: 0;
     padding: 16px;
   }
+
   .layout {
     flex-direction: column;
+  }
+
+  .auth-card {
+    padding: 24px 20px;
+  }
+
+  .auth-title {
+    font-size: 22px;
+  }
+
+  .glass-table th,
+  .glass-table td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .glass-table td .copy-btn {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .section-title {
+    font-size: 16px;
+    gap: 8px;
+  }
+
+  .glass-strong {
+    padding: 20px !important;
+  }
+
+  .viewer-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .viewer-toolbar .viewer-back {
+    font-size: 13px;
+  }
+
+  .header-user {
+    font-size: 12px;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-success,
+  .btn-warning {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
+  .upload-area {
+    padding: 24px 16px;
+  }
+
+  .upload-icon {
+    font-size: 28px;
+  }
+
+  .verify-result {
+    font-size: 13px;
+    padding: 12px 16px;
+  }
+
+  .truncate {
+    max-width: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 20px 16px;
+  }
+
+  .auth-title {
+    font-size: 20px;
+  }
+
+  .auth-subtitle {
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+
+  .glass-table th,
+  .glass-table td {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .glass-table td .copy-btn {
+    font-size: 9px;
+    padding: 1px 4px;
+    margin-left: 4px;
+  }
+
+  .section-title {
+    font-size: 14px;
+  }
+
+  .glass-strong {
+    padding: 16px !important;
+    border-radius: 14px;
+  }
+
+  .truncate {
+    max-width: 80px;
+  }
+
+  .header-user {
+    font-size: 11px;
+  }
+
+  .header-user .role-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+
+  .btn-sm {
+    padding: 5px 10px;
+    font-size: 10px;
   }
 }
 

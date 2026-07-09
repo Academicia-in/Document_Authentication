@@ -18,7 +18,7 @@ export default function ViewerPage() {
   async function handleSign(qrPos) {
     setSigning(true)
     try {
-      await api.signDocument(docId, qrPos.qr_x, qrPos.qr_y, qrPos.qr_page)
+      await api.signDocument(docId, qrPos.qr_x, qrPos.qr_y, qrPos.qr_page, qrPos.qr_size || 100)
       toast('Document signed successfully!', 'success')
       navigate('/dashboard')
     } catch (err) {

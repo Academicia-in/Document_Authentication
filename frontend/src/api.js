@@ -25,8 +25,8 @@ export function login(username, password) {
   }).then(r => { if (!r.ok) throw new Error('Invalid credentials'); return r.json() })
 }
 
-export function register(username, password, role) {
-  const params = new URLSearchParams({ username, password, role })
+export function register(username, password, role, email = '') {
+  const params = new URLSearchParams({ username, password, role, email })
   return fetch(BASE + '/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -50,8 +50,8 @@ export function uploadDoc(file, signerId) {
   }).then(r => { if (!r.ok) throw new Error('Upload failed'); return r.json() })
 }
 
-export function signDocument(docId, qr_x = 450, qr_y = 700, qr_page = 0) {
-  const params = new URLSearchParams({ qr_x, qr_y, qr_page })
+export function signDocument(docId, qr_x = 450, qr_y = 700, qr_page = 0, qr_size = 100) {
+  const params = new URLSearchParams({ qr_x, qr_y, qr_page, qr_size })
   const token = localStorage.getItem('token')
   return fetch(BASE + '/sign/' + docId, {
     method: 'POST',
@@ -217,6 +217,33 @@ export function adminDeleteDocument(docId) {
 
 export function adminGetActivityLogs() {
   return request('/admin/activity-logs')
+}
+
+export function sendForgotOtp(email) {
+  const params = new URLSearchParams({ email })
+  return fetch(BASE + '/forgot-password/send-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params
+  }).then(r => { if (!r.ok) return r.json().then(e => { throw new Error(e.detail) }); return r.json() })
+}
+
+export function verifyForgotOtp(email, otp) {
+  const params = new URLSearchParams({ email, otp })
+  return fetch(BASE + '/forgot-password/verify-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params
+  }).then(r => { if (!r.ok) return r.json().then(e => { throw new Error(e.detail) }); return r.json() })
+}
+
+export function resetPassword(email, newPassword, resetToken) {
+  const params = new URLSearchParams({ email, new_password: newPassword, reset_token: resetToken })
+  return fetch(BASE + '/forgot-password/reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params
+  }).then(r => { if (!r.ok) return r.json().then(e => { throw new Error(e.detail) }); return r.json() })
 }
 
 export function adminUpdateProfile(data) {

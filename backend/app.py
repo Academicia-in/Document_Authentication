@@ -14,10 +14,13 @@ from backend.admin_routes import router as admin_router
 import shutil
 import uuid
 import os
+import smtplib
+from email.message import EmailMessage
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from jose import jwt, JWTError
+from datetime import datetime, timedelta
 
 import qrcode
 from reportlab.pdfgen import canvas
@@ -69,6 +72,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ─── SMTP Email ───
+SMTP_HOST = os.getenv("SMTP_HOST")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER)
+
+def send_email(to_email, subject, body):
+    if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
+        return
+    try:
+        msg = EmailMessage()
+        msg.set_content(body)
+        msg["Subject"] = subject
+        msg["From"] = SMTP_FROM
+        msg["To"] = to_email
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+    except Exception:
+        pass
+
 app.mount("/docs", StaticFiles(directory=UPLOAD_FOLDER), name="documents")
 app.mount("/output", StaticFiles(directory=OUTPUT_FOLDER), name="output")
 if os.path.isdir(REACT_ASSETS):
@@ -90,6 +116,10 @@ async def serve_login():
 async def serve_register():
     return FileResponse(os.path.join(REACT_DIST, "index.html"))
 
+@app.get("/forgot-password")
+async def serve_forgot_password():
+    return FileResponse(os.path.join(REACT_DIST, "index.html"))
+
 @app.get("/dashboard")
 async def serve_dashboard():
     return FileResponse(os.path.join(REACT_DIST, "index.html"))
@@ -103,7 +133,7 @@ async def serve_viewer(doc_id: str):
 async def serve_admin():
     return FileResponse(os.path.join(REACT_DIST, "index.html"))
 
-from backend.auth_utils import hash_password, verify_password, create_access_token, get_current_user, SECRET_KEY, ALGORITHM
+from backend.auth_utils import hash_password, verify_password, create_access_token, get_current_user, SECRET_KEY, ALGORITHM, generate_otp, store_otp, verify_otp
 
 def hash_file(filepath):
     digest = hashes.Hash(hashes.SHA256())
@@ -128,18 +158,25 @@ def log_action(document_id, action, user):
 def register(
     username: str = Form(...),
     password: str = Form(...),
-    role: str = Form(...)
+    role: str = Form(...),
+    email: str = Form("")
 ):
     db = SessionLocal()
     existing_user = db.query(User).filter(User.username == username).first()
     if existing_user:
         db.close()
         raise HTTPException(status_code=400, detail="User already exists")
+    if email:
+        existing_email = db.query(User).filter(User.email == email).first()
+        if existing_email:
+            db.close()
+            raise HTTPException(status_code=400, detail="Email already in use")
     user = User(
         id=str(uuid.uuid4()),
         username=username,
         hashed_password=hash_password(password),
-        role=role
+        role=role,
+        email=email or None
     )
     db.add(user)
     db.commit()
@@ -179,17 +216,73 @@ async def upload_document(file: UploadFile = File(...),signer_id: str = Form(...
 )
     db.add(new_doc)
     db.commit()
+    signer_user = db.query(User).filter(User.id == signer_id).first()
     db.close()
     log_action(doc_id, "UPLOAD", current_user.username)
+    if signer_user and signer_user.email:
+        send_email(
+            to_email=signer_user.email,
+            subject="New Document Assigned for Signing",
+            body=f"Hello {signer_user.username},\n\nA new document has been assigned to you for signing by {current_user.username}.\n\nDocument ID: {doc_id}\n\nPlease log in to the system to view and sign the document.\n\n— Academicia Document System"
+        )
     return {
         "message": "Document uploaded successfully",
         "document_id": doc_id,
         "status": "PENDING"
     }
 
+# ─── Forgot Password ───
+@app.post("/forgot-password/send-otp")
+def send_otp(email: str = Form(...)):
+    if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
+        raise HTTPException(status_code=500, detail="Email service not configured. Contact your administrator.")
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == email).first()
+    db.close()
+    if not user:
+        raise HTTPException(status_code=404, detail="No account found with this email")
+    otp = generate_otp()
+    store_otp(email, otp)
+    send_email(
+        to_email=email,
+        subject="Password Reset OTP",
+        body=f"Your OTP for password reset is: {otp}\n\nThis OTP is valid for 10 minutes.\n\n— Academicia Document System"
+    )
+    return {"message": "OTP sent to your email"}
+
+@app.post("/forgot-password/verify-otp")
+def verify_otp_endpoint(email: str = Form(...), otp: str = Form(...)):
+    if not verify_otp(email, otp):
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    reset_token = create_access_token(
+        data={"sub": email, "purpose": "reset_password"},
+        expires_delta=timedelta(minutes=10)
+    )
+    return {"message": "OTP verified", "reset_token": reset_token}
+
+@app.post("/forgot-password/reset")
+def reset_password(email: str = Form(...), new_password: str = Form(...), reset_token: str = Form(...)):
+    try:
+        payload = jwt.decode(reset_token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("sub") != email or payload.get("purpose") != "reset_password":
+            raise HTTPException(status_code=400, detail="Invalid reset token")
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    if len(new_password) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        db.close()
+        raise HTTPException(status_code=404, detail="User not found")
+    user.hashed_password = hash_password(new_password)
+    db.commit()
+    db.close()
+    return {"message": "Password reset successfully"}
+
 @app.post("/sign/{doc_id}")
 def sign_document(doc_id: str, qr_x: int = Form(450), qr_y: int = Form(700),
-                  qr_page: int = Form(0), current_user: User = Depends(get_current_user)):
+                  qr_page: int = Form(0), qr_size: int = Form(150), current_user: User = Depends(get_current_user)):
     try:
         if current_user.role != "SIGNER":
             raise HTTPException(status_code=403, detail="Only signer can sign documents")
@@ -219,7 +312,7 @@ def sign_document(doc_id: str, qr_x: int = Form(450), qr_y: int = Form(700),
                     page_h = float(mb.height)
                     overlay_pdf = os.path.join(OUTPUT_FOLDER, f"{doc_id}_overlay.pdf")
                     c = canvas.Canvas(overlay_pdf, pagesize=(page_w, page_h))
-                    c.drawImage(qr_path, qr_x, qr_y, width=150, height=150, mask='auto')
+                    c.drawImage(qr_path, qr_x, qr_y, width=qr_size, height=qr_size, mask='auto')
                     c.save()
                     overlay_reader = PdfReader(overlay_pdf)
                     pg.merge_page(overlay_reader.pages[0], over=True)
@@ -277,7 +370,7 @@ def sign_document(doc_id: str, qr_x: int = Form(450), qr_y: int = Form(700),
                 page_h = float(mb.height)
                 overlay_pdf = os.path.join(OUTPUT_FOLDER, f"{doc_id}_overlay.pdf")
                 c = canvas.Canvas(overlay_pdf, pagesize=(page_w, page_h))
-                c.drawImage(qr_path, qr_x, qr_y, width=150, height=150, mask='auto')
+                c.drawImage(qr_path, qr_x, qr_y, width=qr_size, height=qr_size, mask='auto')
                 c.save()
                 overlay_reader = PdfReader(overlay_pdf)
                 pg.merge_page(overlay_reader.pages[0], over=True)
