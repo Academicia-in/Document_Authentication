@@ -30,7 +30,6 @@ export default function EnhancedPdfViewer({ docId, role, onSign, signing }) {
   const fileWithAuth = {
     url: `${BASE}/document/${docId}`,
     httpHeaders: token ? { 'Authorization': `Bearer ${token}` } : {},
-    withCredentials: true,
   }
 
   function onDocLoad({ numPages }) {

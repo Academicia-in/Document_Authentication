@@ -65,7 +65,6 @@ cors_origins = ["*"] if not raw else [o.strip() for o in raw.split(",") if o.str
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
