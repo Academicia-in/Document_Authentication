@@ -95,7 +95,7 @@ def send_email(to_email, subject, body):
         return True
     except Exception as e:
         print(f"SMTP error: {e}")
-        return False
+        return str(e)
 
 app.mount("/docs", StaticFiles(directory=UPLOAD_FOLDER), name="documents")
 app.mount("/output", StaticFiles(directory=OUTPUT_FOLDER), name="output")
@@ -250,9 +250,9 @@ def send_otp(email: str = Form(...)):
         subject="Password Reset OTP",
         body=f"Your OTP for password reset is: {otp}\n\nThis OTP is valid for 10 minutes.\n\n— Academicia Document System"
     )
-    if not sent:
-        raise HTTPException(status_code=500, detail="Failed to send email. Check your SMTP settings.")
-    return {"message": "OTP sent to your email"}
+    if sent is True:
+        return {"message": "OTP sent to your email"}
+    raise HTTPException(status_code=500, detail=sent if isinstance(sent, str) else "Failed to send email. Check your SMTP settings.")
 
 @app.post("/forgot-password/verify-otp")
 def verify_otp_endpoint(email: str = Form(...), otp: str = Form(...)):
