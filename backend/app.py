@@ -81,19 +81,21 @@ SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER)
 
 def send_email(to_email, subject, body):
     if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
-        return
+        return False
     try:
         msg = EmailMessage()
         msg.set_content(body)
         msg["Subject"] = subject
         msg["From"] = SMTP_FROM
         msg["To"] = to_email
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
             server.starttls()
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
-    except Exception:
-        pass
+        return True
+    except Exception as e:
+        print(f"SMTP error: {e}")
+        return False
 
 app.mount("/docs", StaticFiles(directory=UPLOAD_FOLDER), name="documents")
 app.mount("/output", StaticFiles(directory=OUTPUT_FOLDER), name="output")
@@ -243,11 +245,13 @@ def send_otp(email: str = Form(...)):
         raise HTTPException(status_code=404, detail="No account found with this email")
     otp = generate_otp()
     store_otp(email, otp)
-    send_email(
+    sent = send_email(
         to_email=email,
         subject="Password Reset OTP",
         body=f"Your OTP for password reset is: {otp}\n\nThis OTP is valid for 10 minutes.\n\n— Academicia Document System"
     )
+    if not sent:
+        raise HTTPException(status_code=500, detail="Failed to send email. Check your SMTP settings.")
     return {"message": "OTP sent to your email"}
 
 @app.post("/forgot-password/verify-otp")
