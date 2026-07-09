@@ -14,8 +14,8 @@ from backend.admin_routes import router as admin_router
 import shutil
 import uuid
 import os
-import smtplib
-from email.message import EmailMessage
+import urllib.request
+import json
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -72,29 +72,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── SMTP Email ───
-SMTP_HOST = os.getenv("SMTP_HOST")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER)
+# ─── SendGrid Email ───
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+SENDGRID_FROM = os.getenv("SENDGRID_FROM")
 
 def send_email(to_email, subject, body):
-    if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
+    if not SENDGRID_API_KEY or not SENDGRID_FROM:
         return False
     try:
-        msg = EmailMessage()
-        msg.set_content(body)
-        msg["Subject"] = subject
-        msg["From"] = SMTP_FROM
-        msg["To"] = to_email
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.send_message(msg)
-        return True
+        data = {
+            "personalizations": [{"to": [{"email": to_email}]}],
+            "from": {"email": SENDGRID_FROM},
+            "subject": subject,
+            "content": [{"type": "text/plain", "value": body}]
+        }
+        req = urllib.request.Request(
+            "https://api.sendgrid.com/v3/mail/send",
+            data=json.dumps(data).encode(),
+            headers={
+                "Authorization": f"Bearer {SENDGRID_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.status == 202
     except Exception as e:
-        print(f"SMTP error: {e}")
+        print(f"SendGrid error: {e}")
         return str(e)
 
 app.mount("/docs", StaticFiles(directory=UPLOAD_FOLDER), name="documents")
@@ -236,7 +240,7 @@ async def upload_document(file: UploadFile = File(...),signer_id: str = Form(...
 # ─── Forgot Password ───
 @app.post("/forgot-password/send-otp")
 def send_otp(email: str = Form(...)):
-    if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
+    if not SENDGRID_API_KEY or not SENDGRID_FROM:
         raise HTTPException(status_code=500, detail="Email service not configured. Contact your administrator.")
     db = SessionLocal()
     user = db.query(User).filter(User.email == email).first()
