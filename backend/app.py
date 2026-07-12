@@ -238,6 +238,15 @@ async def upload_document(file: UploadFile = File(...),signer_id: str = Form(...
     }
 
 # ─── Forgot Password ───
+@app.get("/debug-env")
+def debug_env():
+    return {
+        "SENDGRID_API_KEY_set": bool(SENDGRID_API_KEY),
+        "SENDGRID_API_KEY_length": len(SENDGRID_API_KEY) if SENDGRID_API_KEY else 0,
+        "SENDGRID_FROM_set": bool(SENDGRID_FROM),
+        "SENDGRID_FROM_value": SENDGRID_FROM or "",
+    }
+
 @app.post("/forgot-password/send-otp")
 def send_otp(email: str = Form(...)):
     if not SENDGRID_API_KEY or not SENDGRID_FROM:
